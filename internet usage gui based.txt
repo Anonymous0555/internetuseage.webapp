@@ -1,0 +1,76 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from tkinter import messagebox
+
+# Load data
+df = pd.read_csv('internetusage.csv.csv', skiprows=4)
+
+# Prepare year columns
+year_columns = [col for col in df.columns if col.isdigit() and int(col) <= 2021]
+years = list(map(int, year_columns))
+
+# GUI window
+root = tk.Tk()
+root.title("Internet Usage Plotter")
+root.geometry("900x600")
+
+# Entry Label and Box
+tk.Label(root, text="Enter country names (comma-separated):").pack(pady=5)
+entry = tk.Entry(root, width=50)
+entry.pack(pady=5)
+
+# Frame for plot
+plot_frame = tk.Frame(root)
+plot_frame.pack(fill=tk.BOTH, expand=True)
+
+canvas = None  # Placeholder for the plot canvas
+
+# Plotting function
+def plot_usage():
+    global canvas
+    user_input = entry.get()
+    countries = [c.strip().lower() for c in user_input.split(',') if c.strip()]
+
+    if not countries:
+        messagebox.showerror("Input Error", "Please enter at least one country name.")
+        return
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    has_data = False
+
+    for country in countries:
+        match = df[df['Country Name'].str.lower() == country]
+        if match.empty:
+            print(f"No data for: {country.title()}")
+            continue
+        usage = match[year_columns].values.flatten().astype(float)
+        ax.plot(years, usage, marker='o', label=match['Country Name'].values[0])
+        has_data = True
+
+    if has_data:
+        ax.set_title('Internet Usage (% of Population) (up to 2021)')
+        ax.set_xlabel('Year')
+        ax.set_ylabel('Internet Users (%)')
+        ax.set_ylim(0, 100)
+        ax.grid(True)
+        ax.legend()
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    else:
+        messagebox.showinfo("No Data", "No valid countries were found.")
+        return
+
+    # Clear old plot if it exists
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    # Embed new plot in GUI
+    canvas = FigureCanvasTkAgg(fig, master=plot_frame)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+# Plot Button
+tk.Button(root, text="Plot", command=plot_usage).pack(pady=10)
+
+root.mainloop()
